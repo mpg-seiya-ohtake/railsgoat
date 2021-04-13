@@ -41,7 +41,7 @@ class User < ApplicationRecord
   def self.authenticate(email, password)
     auth = nil
     user = find_by_email(email) || User.new(:password => "")
-    if Rack::Utils.secure_compare(user.password, Digest::MD5.hexdigest(password))
+    if Rack::Utils.secure_compare(user.password_hash, BCrypt::Engine.hash_secret(password, user.password_salt))
       auth = user
     else
       raise "Incorrect Password!"
@@ -50,8 +50,9 @@ class User < ApplicationRecord
   end
 
   def hash_password
-    if will_save_change_to_password?
-      self.password = Digest::MD5.hexdigest(self.password)
+    if self.password.present?
+      self.password_salt = BCrypt::Engine.generate_salt
+      self.password_hash = BCrypt::Engine.hash_secret(self.password, self.password_salt)
     end
   end
 
